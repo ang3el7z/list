@@ -47,7 +47,7 @@ jobs:
         # Формируем дату для релиза
         CURRENT_DATE=$(date +%d-%m-%Y)
         RELEASE_NAME="Release $CURRENT_DATE"
-        TAG_NAME="${GITHUB_REF##*/}"
+        TAG_NAME="release-$(date +%Y%m%d-%H%M%S)"
 
         # Создаём релиз и прикрепляем файлы
         gh release create "$TAG_NAME" \
