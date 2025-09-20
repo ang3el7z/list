@@ -3,7 +3,7 @@ name: Build Community .srs Files
 on:
   push:
     tags:
-      - '*'  # триггер на любой новый тег
+      - '*'  # Триггер на любой новый тег
 
 jobs:
   generate-community-srs:
@@ -13,24 +13,23 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    - name: Prepare Sing-Box refilter directory
+    - name: Prepare Sing-Box refilter directories
       run: |
-        mkdir -p $GITHUB_WORKSPACE/src/sing-box-files/refilter
+        mkdir -p $GITHUB_WORKSPACE/src/sing-box-files/refilter/community
+        mkdir -p $GITHUB_WORKSPACE/src/sing-box-files/refilter/community_ip
 
-        # Копируем community файлы
-        cp community.lst $GITHUB_WORKSPACE/src/sing-box-files/refilter/
-        cp community_ips.lst $GITHUB_WORKSPACE/src/sing-box-files/refilter/
+        # Копируем community файлы в соответствующие папки
+        cp community.lst $GITHUB_WORKSPACE/src/sing-box-files/refilter/community/
+        cp community_ips.lst $GITHUB_WORKSPACE/src/sing-box-files/refilter/community_ip/
 
     - name: Generate .srs Files
       run: |
         cd $GITHUB_WORKSPACE/src/sing-box-files
-
-        # Убедимся, что скрипт выполняемый
         chmod +x generate-geoip-geosite
 
         # Генерация community.srs и community_ip.srs
-        ./generate-geoip-geosite -i ./refilter/community.lst -o ./refilter/community.srs
-        ./generate-geoip-geosite -i ./refilter/community_ips.lst -o ./refilter/community_ip.srs
+        ./generate-geoip-geosite -i ./refilter/community -o ./refilter/community.srs
+        ./generate-geoip-geosite -i ./refilter/community_ip -o ./refilter/community_ip.srs
 
     - name: Verify Output
       run: |
