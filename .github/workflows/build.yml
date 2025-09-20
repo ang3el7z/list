@@ -1,24 +1,23 @@
 name: Build Community .srs Files
 
 on:
-  push:
-    tags:
-      - '*'  # Триггер на любой новый тег
+  workflow_dispatch: # Allows manual trigger of the workflow
+  schedule:
+    - cron: '0 0 */6 * *' # Runs every 6th day at midnight UTC
 
 jobs:
-  generate-community-srs:
+  build-community:
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    - name: Prepare Sing-Box refilter directories
+    - name: Prepare refilter directories
       run: |
         mkdir -p $GITHUB_WORKSPACE/src/sing-box-files/refilter/community
         mkdir -p $GITHUB_WORKSPACE/src/sing-box-files/refilter/community_ip
 
-        # Копируем community файлы в соответствующие папки
         cp community.lst $GITHUB_WORKSPACE/src/sing-box-files/refilter/community/
         cp community_ips.lst $GITHUB_WORKSPACE/src/sing-box-files/refilter/community_ip/
 
@@ -27,27 +26,37 @@ jobs:
         cd $GITHUB_WORKSPACE/src/sing-box-files
         chmod +x generate-geoip-geosite
 
-        # Генерация community.srs и community_ip.srs
         ./generate-geoip-geosite -i ./refilter/community -o ./refilter/community.srs
         ./generate-geoip-geosite -i ./refilter/community_ip -o ./refilter/community_ip.srs
 
-    - name: Verify Output
+    - name: Verify generated files
       run: |
-        echo "Содержимое refilter после генерации .srs:"
         ls -la $GITHUB_WORKSPACE/src/sing-box-files/refilter
 
-    - name: Upload .srs Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: community-srs-files
-        path: $GITHUB_WORKSPACE/src/sing-box-files/refilter/
+    - name: Set Release Name and Tag
+      run: |
+        CURRENT_DATE=$(date +%d-%m-%Y)
+        CURRENT_TAG=$(date +%d%m%Y)
+        RELEASE_NAME="Release $CURRENT_DATE"
+        TAG_NAME="$CURRENT_TAG"
+        echo "RELEASE_NAME=$RELEASE_NAME" >> $GITHUB_ENV
+        echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+      shell: bash
 
-    - name: Create Release
-      uses: ncipollo/release-action@v1
-      with:
-        tag: ${{ github.ref_name }}
-        name: "Release ${{ github.ref_name }}"
-        body: "Automatic community.srs release for tag ${{ github.ref_name }}"
-        files: |
-          $GITHUB_WORKSPACE/src/sing-box-files/refilter/community.srs
-          $GITHUB_WORKSPACE/src/sing-box-files/refilter/community_ip.srs
+    - name: Create Pre-release with gh CLI
+      run: |
+        gh release create "$TAG_NAME" \
+          $GITHUB_WORKSPACE/src/sing-box-files/refilter/community.srs \
+          $GITHUB_WORKSPACE/src/sing-box-files/refilter/community_ip.srs \
+          --title "$RELEASE_NAME" \
+          --notes "Automatic $RELEASE_NAME creation for community lists." \
+          --draft \
+          --prerelease
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Verify Release
+      run: |
+        gh release view "$TAG_NAME"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
