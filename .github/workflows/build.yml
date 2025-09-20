@@ -1,12 +1,12 @@
-name: Build Custom .srs Files
+name: Build Community .srs Files
 
 on:
-  workflow_dispatch:  # ручной запуск
-  schedule:
-    - cron: '0 0 */6 * *' # каждые 6 дней в полночь UTC
+  push:
+    tags:
+      - '*'  # триггер на любой новый тег
 
 jobs:
-  generate-srs:
+  generate-community-srs:
     runs-on: ubuntu-latest
 
     steps:
@@ -17,11 +17,9 @@ jobs:
       run: |
         mkdir -p $GITHUB_WORKSPACE/src/sing-box-files/refilter
 
-        # Копируем нужные входные файлы
+        # Копируем community файлы
         cp community.lst $GITHUB_WORKSPACE/src/sing-box-files/refilter/
         cp community_ips.lst $GITHUB_WORKSPACE/src/sing-box-files/refilter/
-        cp youtube.lst $GITHUB_WORKSPACE/src/sing-box-files/refilter/
-        cp youtube_ips.lst $GITHUB_WORKSPACE/src/sing-box-files/refilter/
 
     - name: Generate .srs Files
       run: |
@@ -31,8 +29,8 @@ jobs:
         chmod +x generate-geoip-geosite
 
         # Генерация community.srs и community_ip.srs
-        ./generate-geoip-geosite -i ./refilter/community.lst -o ./refilter/youtube.srs
-        ./generate-geoip-geosite -i ./refilter/community_ips.lst -o ./refilter/youtube_ip_ip.srs
+        ./generate-geoip-geosite -i ./refilter/community.lst -o ./refilter/community.srs
+        ./generate-geoip-geosite -i ./refilter/community_ips.lst -o ./refilter/community_ip.srs
 
     - name: Verify Output
       run: |
@@ -42,5 +40,15 @@ jobs:
     - name: Upload .srs Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: srs-files
+        name: community-srs-files
         path: $GITHUB_WORKSPACE/src/sing-box-files/refilter/
+
+    - name: Create Release
+      uses: ncipollo/release-action@v1
+      with:
+        tag: ${{ github.ref_name }}
+        name: "Release ${{ github.ref_name }}"
+        body: "Automatic community.srs release for tag ${{ github.ref_name }}"
+        files: |
+          $GITHUB_WORKSPACE/src/sing-box-files/refilter/community.srs
+          $GITHUB_WORKSPACE/src/sing-box-files/refilter/community_ip.srs
