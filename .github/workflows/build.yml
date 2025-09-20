@@ -15,7 +15,6 @@ jobs:
       run: |
         mkdir -p $GITHUB_WORKSPACE/src/sing-box-files/refilter
 
-        # Копируем community списки в refilter
         cp $GITHUB_WORKSPACE/community.lst $GITHUB_WORKSPACE/src/sing-box-files/refilter/include-domain-refilter_community.lst
         cp $GITHUB_WORKSPACE/community_ips.lst $GITHUB_WORKSPACE/src/sing-box-files/refilter/include-ip-refilter_community.lst
 
@@ -26,8 +25,11 @@ jobs:
       run: |
         cd $GITHUB_WORKSPACE/src/sing-box-files
         chmod +x generate-geoip-geosite
-        # Генерация файлов в той же директории
         ./generate-geoip-geosite -i ./refilter -o ./refilter
+
+        # Переименовываем файлы в нужный формат
+        mv ./refilter/ruleset-domain-refilter_community.srs ./refilter/domain-ang3el_community.srs
+        mv ./refilter/ruleset-ip-refilter_community.srs ./refilter/ip-ang3el_community.srs
 
     - name: Verify generated files
       run: ls -la $GITHUB_WORKSPACE/src/sing-box-files/refilter
@@ -42,18 +44,17 @@ jobs:
 
     - name: Create Release
       run: |
-        # Берём тег, который вызвал workflow
+        # Формируем дату для релиза
+        CURRENT_DATE=$(date +%d-%m-%Y)
+        RELEASE_NAME="Release $CURRENT_DATE"
         TAG_NAME="${GITHUB_REF##*/}"
-        RELEASE_NAME="Community Release $TAG_NAME"
 
-        # Создаём релиз и прикрепляем только сгенерированные .srs файлы
+        # Создаём релиз и прикрепляем файлы
         gh release create "$TAG_NAME" \
-          $GITHUB_WORKSPACE/src/sing-box-files/refilter/ruleset-domain-refilter_community.srs \
-          $GITHUB_WORKSPACE/src/sing-box-files/refilter/ruleset-ip-refilter_community.srs \
+          $GITHUB_WORKSPACE/src/sing-box-files/refilter/domain-ang3el_community.srs \
+          $GITHUB_WORKSPACE/src/sing-box-files/refilter/ip-ang3el_community.srs \
           --title "$RELEASE_NAME" \
-          --notes "Automatic Community Release" \
-          --draft \
-          --prerelease
+          --notes "Automatic Community Release"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
