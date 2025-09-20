@@ -31,12 +31,8 @@ jobs:
         chmod +x generate-geoip-geosite
 
         # Генерация community.srs и community_ip.srs
-        ./generate-geoip-geosite -i ./refilter/community.lst -o ./refilter/community.srs
-        ./generate-geoip-geosite -i ./refilter/community_ips.lst -o ./refilter/community_ip.srs
-
-        # Генерация youtube.srs и youtube_ip.srs
-        ./generate-geoip-geosite -i ./refilter/youtube.lst -o ./refilter/youtube.srs
-        ./generate-geoip-geosite -i ./refilter/youtube_ips.lst -o ./refilter/youtube_ip.srs
+        ./generate-geoip-geosite -i ./refilter/community.lst -o ./refilter/youtube.srs
+        ./generate-geoip-geosite -i ./refilter/community_ips.lst -o ./refilter/youtube_ip_ip.srs
 
     - name: Verify Output
       run: |
