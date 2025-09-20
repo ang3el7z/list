@@ -1,9 +1,7 @@
 name: Build Community .srs Files
 
 on:
-  workflow_dispatch: # Allows manual trigger of the workflow
-  schedule:
-    - cron: '0 0 */6 * *' # Runs every 6th day at midnight UTC
+  workflow_dispatch:
 
 jobs:
   build-community:
@@ -15,48 +13,51 @@ jobs:
 
     - name: Prepare refilter directories
       run: |
-        mkdir -p $GITHUB_WORKSPACE/src/sing-box-files/refilter/community
-        mkdir -p $GITHUB_WORKSPACE/src/sing-box-files/refilter/community_ip
+        mkdir -p $GITHUB_WORKSPACE/src/sing-box-files/refilter
 
-        cp community.lst $GITHUB_WORKSPACE/src/sing-box-files/refilter/community/
-        cp community_ips.lst $GITHUB_WORKSPACE/src/sing-box-files/refilter/community_ip/
+        # Копируем community списки в refilter
+        cp $GITHUB_WORKSPACE/community.lst $GITHUB_WORKSPACE/src/sing-box-files/refilter/include-domain-refilter_community.lst
+        cp $GITHUB_WORKSPACE/community_ips.lst $GITHUB_WORKSPACE/src/sing-box-files/refilter/include-ip-refilter_community.lst
+
+        # Префикс *. для доменов
+        sed -i 's/^/*./' $GITHUB_WORKSPACE/src/sing-box-files/refilter/include-domain-refilter_community.lst
 
     - name: Generate .srs Files
       run: |
         cd $GITHUB_WORKSPACE/src/sing-box-files
         chmod +x generate-geoip-geosite
-
-        ./generate-geoip-geosite -i ./refilter/community -o ./refilter/community.srs
-        ./generate-geoip-geosite -i ./refilter/community_ip -o ./refilter/community_ip.srs
+        # Генерация файлов в той же директории
+        ./generate-geoip-geosite -i ./refilter -o ./refilter
 
     - name: Verify generated files
-      run: |
-        ls -la $GITHUB_WORKSPACE/src/sing-box-files/refilter
+      run: ls -la $GITHUB_WORKSPACE/src/sing-box-files/refilter
 
-    - name: Set Release Name and Tag
-      run: |
-        CURRENT_DATE=$(date +%d-%m-%Y)
-        CURRENT_TAG=$(date +%d%m%Y)
-        RELEASE_NAME="Release $CURRENT_DATE"
-        TAG_NAME="$CURRENT_TAG"
-        echo "RELEASE_NAME=$RELEASE_NAME" >> $GITHUB_ENV
-        echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
-      shell: bash
+    - name: Install GitHub CLI
+      run: sudo apt-get install -y gh
 
-    - name: Create Pre-release with gh CLI
+    - name: Authenticate GitHub CLI
+      run: gh auth setup-git
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Create Release
       run: |
+        # Берём тег, который вызвал workflow
+        TAG_NAME="${GITHUB_REF##*/}"
+        RELEASE_NAME="Community Release $TAG_NAME"
+
+        # Создаём релиз и прикрепляем только сгенерированные .srs файлы
         gh release create "$TAG_NAME" \
-          $GITHUB_WORKSPACE/src/sing-box-files/refilter/community.srs \
-          $GITHUB_WORKSPACE/src/sing-box-files/refilter/community_ip.srs \
+          $GITHUB_WORKSPACE/src/sing-box-files/refilter/ruleset-domain-refilter_community.srs \
+          $GITHUB_WORKSPACE/src/sing-box-files/refilter/ruleset-ip-refilter_community.srs \
           --title "$RELEASE_NAME" \
-          --notes "Automatic $RELEASE_NAME creation for community lists." \
+          --notes "Automatic Community Release" \
           --draft \
           --prerelease
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Verify Release
-      run: |
-        gh release view "$TAG_NAME"
+      run: gh release view "${GITHUB_REF##*/}"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
